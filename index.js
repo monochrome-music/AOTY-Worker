@@ -48,6 +48,12 @@ export default {
       let userReviewsRaw = "";
       let numReviewsCount = 0;
 
+      let reviews = [];
+      let currentReview = null;
+      let inReviewText = false;
+      let inAuthor = false;
+      let inPublication = false;
+
       const rewriter = new HTMLRewriter()
         .on('a[href="#critics"]', {
           text(t) { criticScore += t.text; }
@@ -63,10 +69,52 @@ export default {
             if (numReviewsCount === 1) criticReviewsRaw += t.text;
             if (numReviewsCount === 2) userReviewsRaw += t.text;
           }
+        })
+        .on("div.albumReviewRow", {
+          element() {
+            currentReview = { score: "", publication: "", author: "", text: "", image: "" };
+            reviews.push(currentReview);
+            inReviewText = false;
+            inPublication = false;
+            inAuthor = false;
+          }
+        })
+        .on("div.albumReviewRating", {
+          text(t) {
+            if (currentReview) currentReview.score += t.text;
+          }
+        })
+        .on("div.albumReviewImage img", {
+          element(el) {
+            if (currentReview) currentReview.image = el.getAttribute("src") || "";
+          }
+        })
+        .on("div.publication a", {
+          element() { inPublication = true; },
+          text(t) {
+            if (currentReview && inPublication) currentReview.publication += t.text;
+          }
+        })
+        .on("div.author a", {
+          element() { inAuthor = true; },
+          text(t) {
+            if (currentReview && inAuthor) currentReview.author += t.text;
+          }
+        })
+        .on("div.albumReviewText", {
+          element() {
+            inReviewText = true;
+            inPublication = false;
+            inAuthor = false;
+          }
+        })
+        .on("div.albumReviewText *", {
+          text(t) {
+            if (currentReview && inReviewText) currentReview.text += t.text;
+          }
         });
 
       await rewriter.transform(albumRes).arrayBuffer();
-
 
       const extractNumbers = (str) => {
         const match = str.match(/[\d,]+/);
@@ -79,7 +127,14 @@ export default {
         url: albumPageUrl,
         critic: {
           score: criticScore.trim() || "N/A",
-          count: extractNumbers(criticReviewsRaw)
+          count: extractNumbers(criticReviewsRaw),
+          reviews: reviews.slice(0, 50).filter(r => r.publication.trim()).map(r => ({
+            score: r.score.trim(),
+            publication: r.publication.trim(),
+            author: r.author.trim(),
+            text: r.text.trim(),
+            image: r.image || ""
+          }))
         },
         user: {
           score: userScore.trim() || "N/A",
