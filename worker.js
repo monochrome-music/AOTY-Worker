@@ -1,13 +1,77 @@
+async function handleLists() {
+  const headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+  };
+
+  try {
+    const res = await fetch("https://www.albumoftheyear.org/lists.php", { headers });
+    if (!res.ok) throw new Error(`AOTY lists fetch failed with status ${res.status}`);
+
+    const lists = [];
+    let current = null;
+
+    await new HTMLRewriter()
+      .on("div.listPub", {
+        element() {
+          current = { name: "", slug: "", image: "" };
+          lists.push(current);
+        }
+      })
+      .on("div.listText a", {
+        element(el) {
+          if (current) {
+            const href = el.getAttribute("href") || "";
+            current.slug = href.replace(/^\/list\//, "").replace(/\/$/, "");
+          }
+        },
+        text(t) {
+          if (current) current.name += t.text;
+        }
+      })
+      .on("div.listLogo img", {
+        element(el) {
+          if (current) {
+            const src = el.getAttribute("src") || "";
+            current.image = src.split("/").pop();
+          }
+        }
+      })
+      .transform(res)
+      .arrayBuffer();
+
+    const result = lists
+      .filter(l => l.slug)
+      .map(l => ({ name: l.name.trim(), slug: l.slug, image: l.image }));
+
+    return new Response(JSON.stringify(result), {
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*"
+      }
+    });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+}
+
 export default {
   async fetch(request) {
     const url = new URL(request.url);
+
+    if (url.pathname === "/lists") {
+      return handleLists();
+    }
+
     const albumQuery = url.searchParams.get("album");
     const artistQuery = url.searchParams.get("artist");
 
     if (!albumQuery || !artistQuery) {
-      return new Response(JSON.stringify({ error: "Missing parameters" }), { 
-        status: 400, 
-        headers: { "Content-Type": "application/json" } 
+      return new Response(JSON.stringify({ error: "Missing parameters" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" }
       });
     }
 
