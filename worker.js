@@ -1,3 +1,81 @@
+async function handleListItems(slug) {
+  const headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+  };
+
+  try {
+    const res = await fetch(`https://www.albumoftheyear.org/list/${slug}/`, { headers });
+    if (!res.ok) throw new Error(`AOTY list fetch failed with status ${res.status}`);
+
+    const items = [];
+    let current = null;
+    let listName = "";
+    let sourceUrl = "";
+
+    await new HTMLRewriter()
+      .on("h1.headline", {
+        text(t) { listName += t.text; }
+      })
+      .on("div.listHeader a.gray", {
+        element(el) {
+          if (!sourceUrl) sourceUrl = el.getAttribute("href") || "";
+        }
+      })
+      .on("div.albumListRow", {
+        element(el) {
+          const id = el.getAttribute("id") || "";
+          const m = id.match(/^rank-(\d+)$/);
+          current = { rank: m ? parseInt(m[1], 10) : null, artistAlbum: "", image: "" };
+          items.push(current);
+        }
+      })
+      .on('a[itemprop="url"]', {
+        text(t) {
+          if (current) current.artistAlbum += t.text;
+        }
+      })
+      .on("div.albumListCover img", {
+        element(el) {
+          if (current && !current.image) {
+            const src = el.getAttribute("src") || "";
+            current.image = src.split("/").pop();
+          }
+        }
+      })
+      .transform(res)
+      .arrayBuffer();
+
+    const result = {
+      name: listName.trim(),
+      sourceUrl,
+      items: items
+        .filter(i => i.rank !== null && i.artistAlbum.trim())
+        .sort((a, b) => a.rank - b.rank)
+        .map(i => {
+          const sep = i.artistAlbum.indexOf(" - ");
+          return {
+            rank: i.rank,
+            artist: sep >= 0 ? i.artistAlbum.slice(0, sep).trim() : i.artistAlbum.trim(),
+            album: sep >= 0 ? i.artistAlbum.slice(sep + 3).trim() : "",
+            image: i.image
+          };
+        })
+    };
+
+    return new Response(JSON.stringify(result), {
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*"
+      }
+    });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+}
+
 async function handleLists() {
   const headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
@@ -63,6 +141,17 @@ export default {
 
     if (url.pathname === "/lists") {
       return handleLists();
+    }
+
+    if (url.pathname === "/list") {
+      const slug = url.searchParams.get("slug");
+      if (!slug) {
+        return new Response(JSON.stringify({ error: "Missing slug parameter" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      return handleListItems(slug);
     }
 
     const albumQuery = url.searchParams.get("album");
