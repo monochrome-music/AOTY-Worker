@@ -1,3 +1,3 @@
-name = "aoty-worker"
+name = "aotyworker"
 main = "src/index.ts"
 compatibility_date = "2026-04-16"
