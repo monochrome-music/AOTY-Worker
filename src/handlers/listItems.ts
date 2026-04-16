@@ -86,7 +86,7 @@ export const handleListItems = async (slug: string): Promise<JSONResponse> => {
   const items: AlbumItem[] = [];
 
   let match;
-  const rowRegex = /<div id="rank-(\d+)" class="albumListRow">([\s\S]*?)<\/div>\s*<\/div>/g;
+  const rowRegex = /<div id="rank-(\d+)" class="albumListRow">([\s\S]*?)<div class="clear"><\/div>/g;
   while ((match = rowRegex.exec(html)) !== null) {
     const rank = parseInt(match[1], 10);
     const rowHtml = match[2];
