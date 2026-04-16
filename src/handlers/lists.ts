@@ -1,4 +1,4 @@
-import { json, extractMeta, extractOgMeta, error } from "../utils";
+import { json, extractMeta, extractOgMeta } from "../utils";
 import type { ListItem, ListsMetadata, JSONResponse } from "../types";
 
 const parseListsMetadata = (html: string): ListsMetadata => {

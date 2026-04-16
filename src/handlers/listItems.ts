@@ -1,7 +1,6 @@
 import { json, stripHtml, extractMeta, extractOgMeta, extractTwMeta, splitArtistAlbum } from "../utils";
 import type { AlbumItem, ListMetadata, ParsedAlbumItem, JSONResponse } from "../types";
 
-const ALBUM_ROW_REGEX = /<div id="rank-(\d+)" class="albumListRow">([\s\S]*?)<\/div><\/div><div class="clear"><\/div>/g;
 const URL_A_REGEX = /<a[^>]*itemprop="url"[^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/;
 const COVER_IMG_REGEX = /<div class="albumListCover"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"[^>]*\/?>/;
 const DATE_REGEX = /<div class="albumListDate"[^>]*>([^<]+)<\/div>/;
@@ -59,6 +58,50 @@ const parseAlbum = (rank: number, rowHtml: string): AlbumItem => {
   };
 };
 
+const parseAlbumListFormat = (html: string): AlbumItem[] => {
+  const items: AlbumItem[] = [];
+  const rankPattern = /(\d+)\.\s*([^-\d]+)\s*-\s*([^<\n]+?)(?=\s*<|$)/g;
+  let match;
+  
+  while ((match = rankPattern.exec(html)) !== null) {
+    const rank = parseInt(match[1], 10);
+    const artistAlbum = `${match[2].trim()} - ${match[3].trim()}`;
+    
+    const afterMatch = html.slice(match.index + match[0].length);
+    
+    const otherListsMatch = afterMatch.match(/In\s+(\d+)\s+Lists/i);
+    const otherListsCount = otherListsMatch ? parseInt(otherListsMatch[1], 10) : null;
+    
+    const dateMatch = afterMatch.match(/([A-Z][a-z]+\s+\d+,\s+\d{4})/);
+    const releaseDate = dateMatch ? dateMatch[1] : "";
+    
+    const genreMatch = afterMatch.match(/([A-Z][a-z]+(?:\s*[,&]\s*[A-Z][a-z]+)*)\s*Critic\s+Score/);
+    const genre = genreMatch ? genreMatch[1].trim() : "";
+    
+    const scoreMatch = afterMatch.match(/Critic\s+Score\s*(\d+)/i);
+    const score = scoreMatch ? parseInt(scoreMatch[1], 10) : null;
+    
+    const mustHearMatch = afterMatch.match(/mustHear/i);
+    const mustHear = !!mustHearMatch;
+
+    items.push({
+      rank,
+      artistAlbum,
+      image: "",
+      score,
+      genre,
+      otherListsCount,
+      blurb: "",
+      releaseDate,
+      url: "",
+      secondaryGenres: [],
+      mustHear,
+    });
+  }
+  
+  return items;
+};
+
 const parseMetadata = (html: string): ListMetadata => {
   const title = extractMeta(html, "Description")
     ? extractOgMeta(html, "og:title") || extractMeta(html, "Description")
@@ -108,6 +151,10 @@ export const handleListItems = async (slug: string): Promise<JSONResponse> => {
       const album = parseAlbum(rank, match[2]);
       items.push(album);
     }
+  }
+
+  if (items.length === 0) {
+    items.push(...parseAlbumListFormat(html));
   }
 
   const sorted = items
