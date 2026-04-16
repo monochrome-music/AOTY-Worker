@@ -22,7 +22,7 @@ const API_INFO = {
       "GET /list?slug=2618-the-needle-drops-top-50-albums-of-2025"
     ],
     album: [
-      "GET /album?artist=Tyler+Childers&album=Snipe+Hunter"
+      "GET /album?artist=Kanye+Wests&album=Late+Registration"
     ]
   }
 };
@@ -37,38 +37,27 @@ const handleRoot = (): JSONResponse => {
   });
 };
 
-const parseQuery = (search: string): Record<string, string> => {
-  const params: Record<string, string> = {};
-  const url = new URL(`http://localhost?${search}`);
-  url.searchParams.forEach((v, k) => { params[k] = v; });
-  return params;
-};
-
 const handleRequest = async (request: Request, _env: Env): Promise<JSONResponse> => {
   const url = new URL(request.url);
-  const { pathname, search } = url;
-  const params = parseQuery(search);
+  const pathname = url.pathname;
+  const params: Record<string, string> = {};
+  url.searchParams.forEach((v, k) => { params[k] = v; });
 
   switch (pathname) {
     case "/":
       return handleRoot();
 
-    case "/lists": {
-      const year = params.y;
-      return handleLists(year);
-    }
+    case "/lists":
+      return handleLists(params.y);
 
     case "/list": {
-      const slug = params.slug;
-      if (!slug) return error("Missing slug parameter", 400);
-      return handleListItems(slug);
+      if (!params.slug) return error("Missing slug parameter", 400);
+      return handleListItems(params.slug);
     }
 
     case "/album": {
-      const artist = params.artist;
-      const album = params.album;
-      if (!artist || !album) return error("Missing artist or album parameter", 400);
-      return handleAlbum(artist, album);
+      if (!params.artist || !params.album) return error("Missing artist or album parameter", 400);
+      return handleAlbum(params.artist, params.album);
     }
 
     default: {
