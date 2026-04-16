@@ -35,13 +35,13 @@ export const handleLists = async (year?: string): Promise<JSONResponse> => {
   let current: ListItem | null = null;
 
   await new HTMLRewriter()
-    .on("div.listPub", {
+    .on("div.listColumn", {
       element() {
         current = { name: "", slug: "", image: "" };
         lists.push(current);
       }
     })
-    .on("div.listText a", {
+    .on("div.listColumn div.listText a", {
       element(el) {
         if (current) {
           const href = el.getAttribute("href") || "";
@@ -52,9 +52,14 @@ export const handleLists = async (year?: string): Promise<JSONResponse> => {
         if (current) current.name += t.text;
       }
     })
-    .on("div.listLogo img", {
+    .on("div.listColumn div.listLogo img", {
       element(el) {
         if (current) current.image = el.getAttribute("src")?.split("/").pop() || "";
+      }
+    })
+    .on("div.listColumn div.listIcon i", {
+      element(_el) {
+        if (current) current.image = "icon";
       }
     })
     .transform(res)
