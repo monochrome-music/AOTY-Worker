@@ -1,7 +1,7 @@
 import { json, stripHtml, extractMeta, extractOgMeta, extractTwMeta, splitArtistAlbum } from "../utils";
 import type { AlbumItem, ListMetadata, ParsedAlbumItem, JSONResponse } from "../types";
 
-const ALBUM_ROW_REGEX = /<div id="rank-(\d+)" class="albumListRow">([\s\S]*?)<\/div>\s*<\/div>\s*<div class="clear">/g;
+const ALBUM_ROW_REGEX = /<div id="rank-(\d+)" class="albumListRow">([\s\S]*?)<\/div><\/div><div class="clear"><\/div>/g;
 const URL_A_REGEX = /<a[^>]*itemprop="url"[^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/;
 const COVER_IMG_REGEX = /<div class="albumListCover"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"[^>]*\/?>/;
 const DATE_REGEX = /<div class="albumListDate"[^>]*>([^<]+)<\/div>/;
@@ -92,11 +92,22 @@ export const handleListItems = async (slug: string): Promise<JSONResponse> => {
   const metadata = parseMetadata(html);
 
   const items: AlbumItem[] = [];
+
   let match;
-  while ((match = ALBUM_ROW_REGEX.exec(html)) !== null) {
+  const regex1 = /<div id="rank-(\d+)" class="albumListRow">([\s\S]*?)<\/div><\/div><div class="clear"><\/div>/g;
+  while ((match = regex1.exec(html)) !== null) {
     const rank = parseInt(match[1], 10);
     const album = parseAlbum(rank, match[2]);
     items.push(album);
+  }
+
+  if (items.length === 0) {
+    const regex2 = /<div id="rank-(\d+)"[^>]*class="albumListRow"[^>]*>([\s\S]*?)<div class="clear">/g;
+    while ((match = regex2.exec(html)) !== null) {
+      const rank = parseInt(match[1], 10);
+      const album = parseAlbum(rank, match[2]);
+      items.push(album);
+    }
   }
 
   const sorted = items
