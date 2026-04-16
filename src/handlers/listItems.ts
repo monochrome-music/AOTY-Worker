@@ -26,8 +26,8 @@ const parseAlbum = (rank: number, rowHtml: string): AlbumItem => {
   const mustHearMatch = rowHtml.match(/class="[^"]*mustHear[^"]*"/);
   const mustHear = !!mustHearMatch;
 
-  const blurbMatch = rowHtml.match(/<div class="albumListBlurb"[^>]*>([\s\S]*?)<\/div>/);
-  const blurb = blurbMatch ? stripHtml(blurbMatch[1]) : "";
+  const blurbMatch = rowHtml.match(/<div class="albumListBlurb"[^>]*>([\s\S]*?)<div class="albumListBlurbLink"/);
+  const blurb = blurbMatch ? stripHtml(blurbMatch[1]).trim() : "";
 
   const secondaryGenres: string[] = [];
   let secMatch;
