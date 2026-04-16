@@ -31,43 +31,26 @@ export const handleLists = async (year?: string): Promise<JSONResponse> => {
   const html = new TextDecoder().decode(await res.arrayBuffer());
   const metadata = parseListsMetadata(html);
 
+  const listColumnRegex = /<div class="listColumn">([\s\S]*?)<\/div><\/div>/g;
   const lists: ListItem[] = [];
-  let current: ListItem | null = null;
+  let match;
 
-  await new HTMLRewriter()
-    .on("div.listColumn", {
-      element() {
-        current = { name: "", slug: "", image: "" };
-        lists.push(current);
-      }
-    })
-    .on("div.listColumn div.listText a", {
-      element(el) {
-        if (current) {
-          const href = el.getAttribute("href") || "";
-          current.slug = href.replace(/^\/list\//, "").replace(/\/$/, "");
-        }
-      },
-      text(t) {
-        if (current) current.name += t.text;
-      }
-    })
-    .on("div.listColumn div.listLogo img", {
-      element(el) {
-        if (current) current.image = el.getAttribute("src")?.split("/").pop() || "";
-      }
-    })
-    .on("div.listColumn div.listIcon i", {
-      element(_el) {
-        if (current) current.image = "icon";
-      }
-    })
-    .transform(res)
-    .arrayBuffer();
+  while ((match = listColumnRegex.exec(html)) !== null) {
+    const columnHtml = match[1];
+    const linkMatch = columnHtml.match(/<div class="listText"><a href="(\/list\/[^"]+)"[^>]*>([^<]+)<\/a>/);
+    const imgMatch = columnHtml.match(/<div class="listLogo"><img[^>]*src="[^"]+\/([^."]+)\.[^"]+"/);
+    const iconMatch = columnHtml.match(/<div class="listIcon"><i class="[^"]*"><\/i><\/div>/);
 
-  const items = lists
-    .filter((l): l is ListItem => !!l.slug)
-    .map((l) => ({ name: l.name.trim(), slug: l.slug, image: l.image }));
+    if (linkMatch) {
+      const slug = linkMatch[1].replace(/^\/list\//, "").replace(/\/$/, "");
+      const name = linkMatch[2].trim();
+      let image = "";
+      if (imgMatch) image = imgMatch[1];
+      else if (iconMatch) image = "icon";
 
-  return json({ metadata, lists: items }, 200, true);
+      lists.push({ name, slug, image });
+    }
+  }
+
+  return json({ metadata, lists }, 200, true);
 };
