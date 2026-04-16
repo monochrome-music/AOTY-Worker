@@ -14,7 +14,7 @@ const parseAlbum = (rank: number, rowHtml: string): AlbumItem => {
   const dateMatch = rowHtml.match(/<div class="albumListDate"[^>]*>([^<]+)<\/div>/);
   const releaseDate = dateMatch ? dateMatch[1].trim() : "";
 
-  const genreMatch = rowHtml.match(/<div class="albumListGenre"[^>]*>([\s\S]*?)<\/div>/);
+  const genreMatch = rowHtml.match(/<div class="albumListGenre"[^>]*>([\s\S]*?)<div class="secondary-genres"/);
   const genre = genreMatch ? genreMatch[1].replace(/<[^>]+>/g, "").replace(/, $/, "").trim() : "";
 
   const scoreMatch = rowHtml.match(/<div class="scoreValue"[^>]*>(\d+)<\/div>/);
