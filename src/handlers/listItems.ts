@@ -137,7 +137,7 @@ export const handleListItems = async (slug: string): Promise<JSONResponse> => {
   const items: AlbumItem[] = [];
 
   let match;
-  const regex1 = /<div id="rank-(\d+)" class="albumListRow">([\s\S]*?)<\/div><\/div><div class="clear"><\/div>/g;
+  const regex1 = /<div id="rank-(\d+)" class="albumListRow">([\s\S]*?)<\/div><\/div>/g;
   while ((match = regex1.exec(html)) !== null) {
     const rank = parseInt(match[1], 10);
     const album = parseAlbum(rank, match[2]);
@@ -145,7 +145,7 @@ export const handleListItems = async (slug: string): Promise<JSONResponse> => {
   }
 
   if (items.length === 0) {
-    const regex2 = /<div id="rank-(\d+)"[^>]*class="albumListRow"[^>]*>([\s\S]*?)<div class="clear">/g;
+    const regex2 = /<div id="rank-(\d+)"[^>]*class="albumListRow"[^>]*>([\s\S]*?)<\/div><\/div>/g;
     while ((match = regex2.exec(html)) !== null) {
       const rank = parseInt(match[1], 10);
       const album = parseAlbum(rank, match[2]);
