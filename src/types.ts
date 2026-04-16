@@ -98,7 +98,9 @@ export interface AnticipatedAlbum {
   releaseDate: string;
   url: string;
   score: number | null;
-  commentCount: number;
+  criticScore: number | null;
+  criticReviewCount: number | null;
+  userReviewCount: number | null;
   wantCount: number;
 }
 

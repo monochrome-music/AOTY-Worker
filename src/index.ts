@@ -2,7 +2,7 @@ import { error } from "./utils";
 import { handleListItems } from "./handlers/listItems";
 import { handleLists } from "./handlers/lists";
 import { handleAlbum } from "./handlers/album";
-import { handleAnticipated } from "./handlers/anticipated";
+import { handleDiscover, handleDiscoverCategory } from "./handlers/anticipated";
 import type { Env, JSONResponse } from "./types";
 
 const API_INFO = {
@@ -13,7 +13,12 @@ const API_INFO = {
     "/lists": "Get all year end lists (optional: ?y=2025 for specific year)",
     "/list?slug=<slug>": "Get a specific list by slug (e.g., ?slug=2618-the-needle-drops-top-50-albums-of-2025)",
     "/album?artist=<artist>&album=<album>": "Get album details with critics and user reviews",
-    "/anticipated": "Get highly anticipated albums"
+    "/discover": "Get discover/popular albums with reviews",
+    "/discover/albums": "Same as /discover",
+    "/discover/singles": "Get discover singles with reviews",
+    "/discover/top-rated": "Get top rated albums",
+    "/discover/under-radar": "Get under the radar albums",
+    "/discover/anticipated": "Get highly anticipated albums"
   },
   examples: {
     lists: [
@@ -24,10 +29,15 @@ const API_INFO = {
       "GET /list?slug=2618-the-needle-drops-top-50-albums-of-2025"
     ],
     album: [
-      "GET /album?artist=Kanye+Wests&album=Late+Registration"
+      "GET /album?artist=Kanye+West&album=Late+Registration"
     ],
-    anticipated: [
-      "GET /anticipated"
+    discover: [
+      "GET /discover",
+      "GET /discover/albums",
+      "GET /discover/singles",
+      "GET /discover/top-rated",
+      "GET /discover/under-radar",
+      "GET /discover/anticipated"
     ]
   }
 };
@@ -65,12 +75,29 @@ const handleRequest = async (request: Request, _env: Env): Promise<JSONResponse>
       return handleAlbum(params.artist, params.album);
     }
 
-    case "/anticipated": {
-      return handleAnticipated();
+    case "/discover":
+    case "/discover/albums": {
+      return handleDiscover();
+    }
+
+    case "/discover/singles": {
+      return handleDiscoverCategory("singles");
+    }
+
+    case "/discover/top-rated": {
+      return handleDiscoverCategory("top-rated");
+    }
+
+    case "/discover/under-radar": {
+      return handleDiscoverCategory("under-radar");
+    }
+
+    case "/discover/anticipated": {
+      return handleDiscoverCategory("anticipated");
     }
 
     default: {
-      return error(`Unknown endpoint: ${pathname}. Available: /, /lists, /list, /album, /anticipated`, 404);
+      return error(`Unknown endpoint: ${pathname}. Available: /, /lists, /list, /album, /discover`, 404);
     }
   }
 };
