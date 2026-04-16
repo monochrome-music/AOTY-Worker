@@ -1,45 +1,38 @@
 import { json, stripHtml, extractMeta, extractOgMeta, extractTwMeta, splitArtistAlbum } from "../utils";
 import type { AlbumItem, ListMetadata, ParsedAlbumItem, JSONResponse } from "../types";
 
-const URL_A_REGEX = /<a[^>]*itemprop="url"[^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/;
-const COVER_IMG_REGEX = /<div class="albumListCover"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"[^>]*\/?>/;
-const DATE_REGEX = /<div class="albumListDate"[^>]*>([^<]+)<\/div>/;
-const GENRE_A_REGEX = /<div class="albumListGenre"[^>]*>[\s\S]*?<a[^>]*>([^<]+)<\/a>/;
-const SCORE_REGEX = /<div class="scoreValue"[^>]*>(\d+)<\/div>/;
-const OTHER_LISTS_REGEX = /<div class="otherLists"[^>]*>In <strong>(\d+)<\/strong> Lists<\/div>/;
-const BLURB_REGEX = /<div class="albumListBlurb"([^>]*)>([\s\S]*?)<\/div>/;
-const MUST_HEAR_REGEX = /<div class="albumListCover"[^>]*class="([^"]*)mustHear([^"]*)"/;
-const SEC_GENRE_REGEX = /<span class="secondary"[^>]*><a[^>]*>([^<]+)<\/a><\/span>/g;
+const URL_A_REGEX = /<a[^>]*href="([^"]+)"[^>]*itemprop="url"[^>]*>([^<]+)<\/a>/;
 
 const parseAlbum = (rank: number, rowHtml: string): AlbumItem => {
   const urlMatch = rowHtml.match(URL_A_REGEX);
   const artistAlbum = urlMatch ? urlMatch[2] : "";
   const albumUrl = urlMatch ? `https://www.albumoftheyear.org${urlMatch[1]}` : "";
 
-  const imgMatch = rowHtml.match(COVER_IMG_REGEX);
+  const imgMatch = rowHtml.match(/<img[^>]*src="([^"]+)"[^>]*\/?>/);
   const image = imgMatch ? imgMatch[1].split("/").pop() || "" : "";
 
-  const dateMatch = rowHtml.match(DATE_REGEX);
+  const dateMatch = rowHtml.match(/<div class="albumListDate"[^>]*>([^<]+)<\/div>/);
   const releaseDate = dateMatch ? dateMatch[1].trim() : "";
 
-  const genreMatch = rowHtml.match(GENRE_A_REGEX);
-  const genre = genreMatch ? genreMatch[1].trim() : "";
+  const genreMatch = rowHtml.match(/<div class="albumListGenre"[^>]*>([\s\S]*?)<\/div>/);
+  const genre = genreMatch ? genreMatch[1].replace(/<[^>]+>/g, "").replace(/, $/, "").trim() : "";
 
-  const scoreMatch = rowHtml.match(SCORE_REGEX);
+  const scoreMatch = rowHtml.match(/<div class="scoreValue"[^>]*>(\d+)<\/div>/);
   const score = scoreMatch ? parseInt(scoreMatch[1], 10) : null;
 
-  const otherListsMatch = rowHtml.match(OTHER_LISTS_REGEX);
+  const otherListsMatch = rowHtml.match(/<div class="otherLists"[^>]*>In <strong>(\d+)<\/strong> Lists<\/div>/);
   const otherListsCount = otherListsMatch ? parseInt(otherListsMatch[1], 10) : null;
 
-  const mustHearMatch = rowHtml.match(MUST_HEAR_REGEX);
+  const mustHearMatch = rowHtml.match(/class="[^"]*mustHear[^"]*"/);
   const mustHear = !!mustHearMatch;
 
-  const blurbMatch = rowHtml.match(BLURB_REGEX);
-  const blurb = blurbMatch ? stripHtml(blurbMatch[2]) : "";
+  const blurbMatch = rowHtml.match(/<div class="albumListBlurb"[^>]*>([\s\S]*?)<\/div>/);
+  const blurb = blurbMatch ? stripHtml(blurbMatch[1]) : "";
 
   const secondaryGenres: string[] = [];
   let secMatch;
-  while ((secMatch = SEC_GENRE_REGEX.exec(rowHtml)) !== null) {
+  const secRegex = /<span class="secondary"[^>]*><a[^>]*>([^<]+)<\/a><\/span>/g;
+  while ((secMatch = secRegex.exec(rowHtml)) !== null) {
     secondaryGenres.push(secMatch[1].trim());
   }
 
@@ -56,50 +49,6 @@ const parseAlbum = (rank: number, rowHtml: string): AlbumItem => {
     secondaryGenres,
     mustHear,
   };
-};
-
-const parseAlbumListFormat = (html: string): AlbumItem[] => {
-  const items: AlbumItem[] = [];
-  const rankPattern = /(\d+)\.\s*([^-\d]+)\s*-\s*([^<\n]+?)(?=\s*<|$)/g;
-  let match;
-  
-  while ((match = rankPattern.exec(html)) !== null) {
-    const rank = parseInt(match[1], 10);
-    const artistAlbum = `${match[2].trim()} - ${match[3].trim()}`;
-    
-    const afterMatch = html.slice(match.index + match[0].length);
-    
-    const otherListsMatch = afterMatch.match(/In\s+(\d+)\s+Lists/i);
-    const otherListsCount = otherListsMatch ? parseInt(otherListsMatch[1], 10) : null;
-    
-    const dateMatch = afterMatch.match(/([A-Z][a-z]+\s+\d+,\s+\d{4})/);
-    const releaseDate = dateMatch ? dateMatch[1] : "";
-    
-    const genreMatch = afterMatch.match(/([A-Z][a-z]+(?:\s*[,&]\s*[A-Z][a-z]+)*)\s*Critic\s+Score/);
-    const genre = genreMatch ? genreMatch[1].trim() : "";
-    
-    const scoreMatch = afterMatch.match(/Critic\s+Score\s*(\d+)/i);
-    const score = scoreMatch ? parseInt(scoreMatch[1], 10) : null;
-    
-    const mustHearMatch = afterMatch.match(/mustHear/i);
-    const mustHear = !!mustHearMatch;
-
-    items.push({
-      rank,
-      artistAlbum,
-      image: "",
-      score,
-      genre,
-      otherListsCount,
-      blurb: "",
-      releaseDate,
-      url: "",
-      secondaryGenres: [],
-      mustHear,
-    });
-  }
-  
-  return items;
 };
 
 const parseMetadata = (html: string): ListMetadata => {
@@ -137,24 +86,12 @@ export const handleListItems = async (slug: string): Promise<JSONResponse> => {
   const items: AlbumItem[] = [];
 
   let match;
-  const regex1 = /<div id="rank-(\d+)" class="albumListRow">([\s\S]*?)<\/div><\/div>/g;
-  while ((match = regex1.exec(html)) !== null) {
+  const rowRegex = /<div id="rank-(\d+)" class="albumListRow">([\s\S]*?)<\/div>\s*<\/div>/g;
+  while ((match = rowRegex.exec(html)) !== null) {
     const rank = parseInt(match[1], 10);
-    const album = parseAlbum(rank, match[2]);
+    const rowHtml = match[2];
+    const album = parseAlbum(rank, rowHtml);
     items.push(album);
-  }
-
-  if (items.length === 0) {
-    const regex2 = /<div id="rank-(\d+)"[^>]*class="albumListRow"[^>]*>([\s\S]*?)<\/div><\/div>/g;
-    while ((match = regex2.exec(html)) !== null) {
-      const rank = parseInt(match[1], 10);
-      const album = parseAlbum(rank, match[2]);
-      items.push(album);
-    }
-  }
-
-  if (items.length === 0) {
-    items.push(...parseAlbumListFormat(html));
   }
 
   const sorted = items
