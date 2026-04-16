@@ -91,4 +91,15 @@ export interface ParsedAlbumItem {
   mustHear: boolean;
 }
 
+export interface AnticipatedAlbum {
+  artist: string;
+  album: string;
+  image: string;
+  releaseDate: string;
+  url: string;
+  score: number | null;
+  commentCount: number;
+  wantCount: number;
+}
+
 export type JSONResponse = Response;

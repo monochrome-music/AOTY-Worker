@@ -26,7 +26,8 @@ const error = (message: string, status = 500): JSONResponse => {
 };
 
 const fetchAoty = async (path: string, useCache = false): Promise<Response> => {
-  const res = await fetch(path, {
+  const url = path.startsWith("http") ? path : `https://www.albumoftheyear.org${path}`;
+  const res = await fetch(url, {
     headers: { "User-Agent": USER_AGENT },
     ...(useCache && { cf: { cacheTtl: 3600, cacheEverything: true } }),
   });

@@ -2,6 +2,7 @@ import { error } from "./utils";
 import { handleListItems } from "./handlers/listItems";
 import { handleLists } from "./handlers/lists";
 import { handleAlbum } from "./handlers/album";
+import { handleAnticipated } from "./handlers/anticipated";
 import type { Env, JSONResponse } from "./types";
 
 const API_INFO = {
@@ -11,7 +12,8 @@ const API_INFO = {
     "/": "API documentation",
     "/lists": "Get all year end lists (optional: ?y=2025 for specific year)",
     "/list?slug=<slug>": "Get a specific list by slug (e.g., ?slug=2618-the-needle-drops-top-50-albums-of-2025)",
-    "/album?artist=<artist>&album=<album>": "Get album details with critics and user reviews"
+    "/album?artist=<artist>&album=<album>": "Get album details with critics and user reviews",
+    "/anticipated": "Get highly anticipated albums"
   },
   examples: {
     lists: [
@@ -23,6 +25,9 @@ const API_INFO = {
     ],
     album: [
       "GET /album?artist=Kanye+Wests&album=Late+Registration"
+    ],
+    anticipated: [
+      "GET /anticipated"
     ]
   }
 };
@@ -60,8 +65,12 @@ const handleRequest = async (request: Request, _env: Env): Promise<JSONResponse>
       return handleAlbum(params.artist, params.album);
     }
 
+    case "/anticipated": {
+      return handleAnticipated();
+    }
+
     default: {
-      return error(`Unknown endpoint: ${pathname}. Available: /, /lists, /list, /album`, 404);
+      return error(`Unknown endpoint: ${pathname}. Available: /, /lists, /list, /album, /anticipated`, 404);
     }
   }
 };
