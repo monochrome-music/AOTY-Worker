@@ -48,7 +48,7 @@ export const handleAlbum = async (artistQuery: string, albumQuery: string): Prom
     })
     .on("div.albumReviewRow", {
       element() {
-        currentReview = { score: "", publication: "", author: "", text: "", image: "" };
+        currentReview = { score: "", publication: "", author: "", text: "", image: "", link: "" };
         reviews.push(currentReview);
         inReviewText = false;
         inPublication = false;
@@ -66,7 +66,13 @@ export const handleAlbum = async (artistQuery: string, albumQuery: string): Prom
       }
     })
     .on("div.publication a", {
-      element() { inPublication = true; },
+      element(el) { 
+        inPublication = true;
+        if (currentReview) {
+          const href = el.getAttribute("href");
+          if (href && href.startsWith("http")) currentReview.link = href;
+        }
+      },
       text(t) {
         if (currentReview && inPublication) currentReview.publication += t.text;
       }
@@ -101,13 +107,14 @@ export const handleAlbum = async (artistQuery: string, albumQuery: string): Prom
       count: extractNumbers(criticReviewsRaw),
       reviews: reviews
         .slice(0, 50)
-        .filter((r): r is Review => !!r.publication.trim())
+        .filter((r): r is Review => !!r.publication.trim() && !!r.link)
         .map((r) => ({
           score: r.score.trim(),
           publication: r.publication.trim(),
           author: r.author.trim(),
           text: stripHtml(r.text).slice(0, 500),
           image: r.image,
+          link: r.link,
         })),
     },
     user: {

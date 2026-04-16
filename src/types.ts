@@ -36,6 +36,7 @@ export interface Review {
   author: string;
   text: string;
   image: string;
+  link: string;
 }
 
 export interface Album {
